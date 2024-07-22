@@ -1,50 +1,74 @@
-// import React from 'react';
-// import { render, screen, fireEvent } from '@testing-library/react';
-// import AppFunctional from './AppFunctional';
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect'
+import AppFunctional from './AppFunctional';
+import axios from 'axios';
 
-Write your tests here
-test('sanity', () => {
-  expect(true).toBe(false)
-})
-// test('renders heading texts', () => {
-//   render(<AppFunctional />);
-//   const coordinatesHeading = screen.getByText(/Coordinates/i);
-//   const stepsHeading = screen.getByText(/You moved/i);
-//   expect(coordinatesHeading).toBeInTheDocument();
-//   expect(stepsHeading).toBeInTheDocument();
-// });
+jest.mock('axios');
 
-// test('renders button texts', () => {
-//   render(<AppFunctional />);
-//   const leftButton = screen.getByText(/left/i);
-//   const upButton = screen.getByText(/up/i);
-//   const rightButton = screen.getByText(/right/i);
-//   const downButton = screen.getByText(/down/i);
-//   const resetButton = screen.getByText(/reset/i);
-//   expect(leftButton).toBeInTheDocument();
-//   expect(upButton).toBeInTheDocument();
-//   expect(rightButton).toBeInTheDocument();
-//   expect(downButton).toBeInTheDocument();
-//   expect(resetButton).toBeInTheDocument();
-// });
+test('renders headings, buttons, and input fields', () => {
+  render(<AppFunctional />);
+  expect(screen.getByText(/Coordinates/i)).toBeInTheDocument();
+  expect(screen.getByText(/You moved/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /LEFT/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /UP/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /RIGHT/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /DOWN/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
+  expect(screen.getByPlaceholderText(/type email/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Submit/i })).toBeInTheDocument();
+});
 
-// test('renders input placeholder text', () => {
-//   render(<AppFunctional />);
-//   const emailInput = screen.getByPlaceholderText(/type email/i);
-//   expect(emailInput).toBeInTheDocument();
-// });
+test('typing on the input changes its value', () => {
+  render(<AppFunctional />);
+  const input = screen.getByPlaceholderText(/type email/i);
+  fireEvent.change(input, { target: { value: 'test@example.com' } });
+  expect(input.value).toBe('test@example.com');
+});
 
-// test('input value changes when typing', () => {
-//   render(<AppFunctional />);
-//   const emailInput = screen.getByPlaceholderText(/type email/i);
-//   fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-//   expect(emailInput.value).toBe('test@example.com');
-// });
+test('form submission displays a success message', async () => {
+  axios.post.mockResolvedValueOnce({ data: { message: 'Submission successful!' } });
 
-// test('renders initial grid', () => {
-//   render(<AppFunctional />);
-//   const grid = screen.getByRole('grid');
-//   const activeSquare = grid.querySelector('.active');
-//   expect(grid).toBeInTheDocument();
-//   expect(activeSquare).toHaveTextContent('B');
-// });
+  render(<AppFunctional />);
+  const input = screen.getByPlaceholderText(/type email/i);
+  fireEvent.change(input, { target: { value: 'test@example.com' } });
+
+  const submitButton = screen.getByRole('button', { name: /Submit/i });
+  fireEvent.click(submitButton);
+
+  const message = await screen.findByText(/Submission successful!/);
+  expect(message).toBeInTheDocument();
+});
+
+test('form submission displays an error message', async () => {
+  axios.post.mockRejectedValueOnce({ response: { data: { message: 'Something went wrong!' } } });
+
+  render(<AppFunctional />);
+  const input = screen.getByPlaceholderText(/type email/i);
+  fireEvent.change(input, { target: { value: 'test@example.com' } });
+
+  const submitButton = screen.getByRole('button', { name: /Submit/i });
+  fireEvent.click(submitButton);
+
+  const message = await screen.findByText(/Something went wrong!/);
+  expect(message).toBeInTheDocument();
+});
+
+test('reset button clears the input and message', () => {
+  render(<AppFunctional />);
+  
+  // Simulate user typing into the input field
+  const input = screen.getByPlaceholderText(/type email/i);
+  fireEvent.change(input, { target: { value: 'test@example.com' } });
+  
+  // Simulate pressing the reset button
+  const resetButton = screen.getByRole('button', { name: /reset/i });
+  fireEvent.click(resetButton);
+  
+  // Assert the input field is cleared
+  expect(input.value).toBe('');
+  
+  // Assert the message field is cleared
+  const message = screen.getByText(/Coordinates \(2, 2\)/); // The initial message
+  expect(message).toBeInTheDocument();
+});
